@@ -1,0 +1,24 @@
+# Broken Mouse Wheel Fixer
+
+Got a broken mousewheel that skips and jumps? This may fix it for you, as it has done so for me.
+
+## General
+
+**Platform:** Linux (specifically, Ubuntu, but should work anywhere since it relies on [evdev](https://en.wikipedia.org/wiki/Evdev))
+
+It needs to be run as root.
+
+## Function/Mechanism
+
+It works by:
+
+- Listening to your mouse wheel events (via [evdev](https://en.wikipedia.org/wiki/Evdev))
+- Establishing a trend; for example, when scrolling up:
+  - 1
+  - 1
+  - 1
+  - -1
+  - 1
+  - 1
+- If the individual event doesn't match the overall pattern of events, like a random -1 in the example above, this is the mouse wheel jumping/skipping and this event is ignored.
+- Events are ignored by writing the event to a [virtual device](https://pypi.org/project/python-uinput/) thereby handling/consuming it
