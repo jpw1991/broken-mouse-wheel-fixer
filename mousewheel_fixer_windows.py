@@ -59,7 +59,7 @@ if __name__ == '__main__':
     print('Starting...')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('buffer_size', nargs='?', default=10)
+    parser.add_argument('buffer_size', nargs='?', default=10, type=int)
     args = parser.parse_args()
 
     recent = RecentEvents(args.buffer_size)
