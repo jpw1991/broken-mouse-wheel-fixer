@@ -4,11 +4,13 @@ Got a broken mousewheel that skips and jumps? This may fix it for you, as it has
 
 ## General
 
-**Platform:** Linux (specifically, Ubuntu, but should work anywhere since it relies on [evdev](https://en.wikipedia.org/wiki/Evdev))
-
-It needs to be run as root.
+**Platforms supported:**
+- Linux (specifically, Ubuntu, but should work anywhere since it relies on [evdev](https://en.wikipedia.org/wiki/Evdev)) and it needs to be run as root.
+- Windows
 
 ## Usage
+
+### Linux
 
 ```sh
 # make virtual environment
@@ -24,6 +26,21 @@ chmod +x mousewheel_fixer.sh
 sudo ./mousewheel_fixer.sh
 ```
 
+### Windows
+
+```
+# make virtual environment
+mkdir venv
+python -m venv myenv
+
+# activate and install requirements
+venv\Scripts\activate.bat
+pip install -r requirements_windows.txt
+
+# run
+python mousewheel_fixer_windows.py
+```
+
 ## Function/Mechanism
 
 It works by:
@@ -37,5 +54,7 @@ It works by:
   - 1
   - 1
 - If the individual event doesn't match the overall pattern of events, like a random -1 in the example above, this is the mouse wheel jumping/skipping and this event is ignored.
-- Events are ignored by writing the event to a [virtual device](https://pypi.org/project/python-uinput/) thereby handling/consuming it
+- Events are ignored by:
+  - **Linux:** writing the event to a [virtual device](https://pypi.org/project/python-uinput/) thereby handling/consuming it
+  - **Windows:** returning False to pywinhook
 
