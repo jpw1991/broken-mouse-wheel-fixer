@@ -1,5 +1,5 @@
 #!/bin/bash
 
 source venv/bin/activate
-python mousewheel_fixer.py
+python broken_mouse_wheel_fixer.py
 

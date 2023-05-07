@@ -24,8 +24,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # run as root
-chmod +x mousewheel_fixer.sh
-sudo ./mousewheel_fixer.sh
+chmod +x broken_mouse_wheel_fixer.sh
+sudo ./broken_mouse_wheel_fixer.sh
 ```
 
 ### Windows
@@ -40,7 +40,7 @@ venv\Scripts\activate.bat
 pip install -r requirements_windows.txt
 
 # run
-python mousewheel_fixer_windows.py
+python broken_mouse_wheel_fixer_windows.py
 ```
 
 ## Function/Mechanism

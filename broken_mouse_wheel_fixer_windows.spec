@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(
-    ['mousewheel_fixer_windows.py'],
+    ['broken_mouse_wheel_fixer_windows.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -28,7 +28,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='mousewheel_fixer_windows',
+    name='broken_mouse_wheel_fixer_windows',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
