@@ -10,6 +10,8 @@ Got a broken mousewheel that skips and jumps? This may fix it for you, as it has
 
 ## Usage
 
+For Windows user convenience: See releases for compiled exes made using PyInstaller.
+
 ### Linux
 
 ```sh
