@@ -1,4 +1,5 @@
 import pythoncom
+import argparse
 from pyWinhook import HookManager
 
 
@@ -23,6 +24,7 @@ class RecentEvents:
 
 
 recent = RecentEvents()
+quit_key_pressed = False
 
 
 def on_mouse_event(event):
@@ -43,8 +45,33 @@ def on_mouse_event(event):
     return permit_event
 
 
+def on_q_pressed(event):
+    global quit_key_pressed
+
+    if event.MessageName == 'key down' and event.Key == 'Q':
+        quit_key_pressed = True
+        return False  # consume event
+
+    return True  # propagate event
+
+
 if __name__ == '__main__':
+    print('Starting...')
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('buffer_size', nargs='?', default=10)
+    args = parser.parse_args()
+
+    recent = RecentEvents(args.buffer_size)
+
     hm = HookManager()
     hm.MouseWheel = on_mouse_event
     hm.HookMouse()
-    pythoncom.PumpMessages()
+    hm.KeyDown = on_q_pressed
+    hm.HookKeyboard()
+    print('Waiting for input. Press Q to quit!')
+    while not quit_key_pressed:
+        pythoncom.PumpWaitingMessages()
+    print('Quitting...')
+    hm.UnhookKeyboard()
+    hm.UnhookMouse()
