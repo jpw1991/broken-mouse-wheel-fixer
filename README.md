@@ -60,3 +60,24 @@ It works by:
   - **Linux:** writing the event to a [virtual device](https://pypi.org/project/python-uinput/) thereby handling/consuming it
   - **Windows:** returning False to pywinhook
 
+## Run as Service
+
+If you're like me and want this running automatically every time you log on, you can do the following to set it up as a `systemd` service:
+
+- Create file at `/etc/systemd/system/brokenmousewheelfixer.service` with the following contents (replace repository path):
+
+```ini
+[Unit]
+Description=Broken Mouse Wheel Fixer
+
+[Service]
+WorkingDirectory=/path/to/broken-mouse-wheel-fixer/
+ExecStart=/path/to/broken-mouse-wheel-fixer/broken_mouse_wheel_fixer.sh
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- Start as service with sudo: `systemctl start brokenmousewheelfixer.service`
+
+It should from then on start whenever you login.
