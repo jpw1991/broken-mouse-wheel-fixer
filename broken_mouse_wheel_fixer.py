@@ -45,6 +45,22 @@ class RecentEventsX(RecentEvents):
 
         self.Running = True
 
+        # xtest_extension = None
+        # for extension in self._display.extensions:
+        #     if extension == 'XTEST':
+        #         xtest_extension = extension
+        #         self._test_context = xtest_extension.module
+        #         break
+        # if xtest_extension is None:
+        #     print("XTest extension is not available")
+        #     self.Running = False
+
+        # if not self._display.has_extension('XTEST'):
+        #     print("XTest extension is not available")
+        #     self.Running = False
+        # else:
+        #     self._test_context = self._display.query_extension('XTEST')
+
         self._handle_mouse_wheel_events()
 
     def __del__(self):
@@ -63,7 +79,7 @@ class RecentEventsX(RecentEvents):
         self.add(value)
         return self.trend() != value
 
-    def _virtual_mouse_wheel_event(self, direction):
+    def _virtual_mouse_wheel_event(self, direction, scroll_amount=1):
         print(f'Generating virtual mouse wheel event for {direction}')
         # if direction == self.SCROLL_UP:
         #     self._ui.write(evdev.ecodes.EV_REL, evdev.ecodes.REL_WHEEL, 1)   # Scroll the wheel up
@@ -72,8 +88,11 @@ class RecentEventsX(RecentEvents):
         #     self._ui.write(evdev.ecodes.EV_REL, evdev.ecodes.REL_WHEEL, -1)  # Scroll the wheel down
         #     self._ui.write(evdev.ecodes.EV_SYN, evdev.ecodes.SYN_REPORT, 0)  # Send a synchronization event
         # fake input works well but is indistinguishable from real input and so triggers an endless event loop
-        xtest.fake_input(self._display, X.ButtonPress, direction, root=self._root)
-        xtest.fake_input(self._display, X.ButtonRelease, direction, root=self._root)
+        return len([xtest.fake_input(self._display, X.ButtonPress, direction, root=self._root),
+                    xtest.fake_input(self._display, X.MotionNotify, scroll_amount, root=self._root),
+                    xtest.fake_input(self._display, X.ButtonRelease, direction, root=self._root)])
+        # self._test_context.fake_input(self._display, X.ButtonPress, direction, root=self._root)
+        # self._test_context.fake_input(self._display, X.ButtonRelease, direction, root=self._root)
         # self._root.send_event(Xlib.protocol.event.ButtonPress(
         #     time=X.CurrentTime,
         #     root=self._root,
@@ -103,7 +122,7 @@ class RecentEventsX(RecentEvents):
         #     detail=direction
         # ))
 
-    def _disable_mouse_wheel_input(self):
+    def _grab_mouse_wheel(self):
         self._root.grab_button(
             button=self.SCROLL_UP,
             modifiers=X.AnyModifier,
@@ -125,7 +144,7 @@ class RecentEventsX(RecentEvents):
             cursor=X.NONE
         )
 
-    def _enable_mouse_wheel_input(self):
+    def _ungrab_mouse_wheel(self):
         self._root.ungrab_button(self.SCROLL_UP, X.AnyModifier)
         self._root.ungrab_button(self.SCROLL_DOWN, X.AnyModifier)
 
@@ -133,16 +152,26 @@ class RecentEventsX(RecentEvents):
 
         # tell X we're only interested in button presses and not other events
         self._root.change_attributes(event_mask=X.ButtonPressMask | X.ButtonReleaseMask)
+        self._display.flush()
 
-        self._disable_mouse_wheel_input()
+        self._grab_mouse_wheel()
 
-        ignore_sequence_numbers = []
+        #ignore_sequence_numbers = []
+        ignore_events = 0
         while self.Running:
+            self._grab_mouse_wheel()
             event = self._root.display.next_event()
-            print(event)
-            if event.sequence_number in ignore_sequence_numbers:
-                print(f'Skipping {event.sequence_number}')
+            self._ungrab_mouse_wheel()
+            if ignore_events > 0:
+                self._ungrab_mouse_wheel()
+                print('ignoring event')
+                ignore_events -= 1
                 continue
+            print(event)
+            self._grab_mouse_wheel()
+            # if event.sequence_number in ignore_sequence_numbers:
+            #     print(f'Skipping {event.sequence_number}')
+            #     continue
             # if event.send_event:
             #     print('Skipping synthetic event')
             #     continue  # skip synthetic events
@@ -150,14 +179,11 @@ class RecentEventsX(RecentEvents):
                 # check if input needs to be blocked
                 block_input = self._block_mouse_wheel_event(event.detail)
                 if not block_input:
-                #     self._enable_mouse_wheel_input()
-                # else:
-                #     self._disable_mouse_wheel_input()
                     # ignore the next 2 sequence numbers (they will be the mouse wheels we generate)
                     # and these seem to be increments of 4
-                    ignore_sequence_numbers = [event.sequence_number + 4, event.sequence_number + 8]
+                    ignore_sequence_numbers = [event.sequence_number + 4, event.sequence_number + 8, event.sequence_number + 12]
                     # perform a mouse up/down on the virtual mouse
-                    self._virtual_mouse_wheel_event(event.detail)
+                    ignore_events = self._virtual_mouse_wheel_event(event.detail)
 
             self._display.allow_events(X.ReplayPointer, X.CurrentTime)
             self._display.sync()
@@ -170,7 +196,7 @@ class RecentEventsX(RecentEvents):
                       f'events ({self._scroll_up_blocked}/{self._scroll_down_blocked})')
                 self.Running = False
 
-        self._enable_mouse_wheel_input()
+        self._ungrab_mouse_wheel()
 
 
 if __name__ == '__main__':
