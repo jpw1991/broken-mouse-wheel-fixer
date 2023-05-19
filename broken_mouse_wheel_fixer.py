@@ -1,28 +1,9 @@
-from evdev import InputDevice, UInput
+import argparse
+import datetime
+
+from evdev import InputDevice, UInput, ecodes
 from select import select
 
-device = InputDevice('/dev/input/event7')
-ui = UInput()
-
-
-# scrolling
-# up:   event at 1683315447.814400, code 08, type 02, val 01
-# down: event at 1683315448.778384, code 08, type 02, val -1
-
-# pattern of bad behaviour:
-# event at 1683315597.933651, code 08, type 02, val -1
-# event at 1683315598.751648, code 08, type 02, val -1
-# event at 1683315598.755643, code 08, type 02, val 02
-# event at 1683315598.763645, code 08, type 02, val -1
-# event at 1683315605.023694, code 08, type 02, val -1
-# event at 1683315618.679808, code 08, type 02, val 01
-# event at 1683315619.087800, code 08, type 02, val -1
-# event at 1683315619.455801, code 08, type 02, val -1
-# event at 1683315619.619826, code 08, type 02, val -1
-# event at 1683315619.939804, code 08, type 02, val -1
-# event at 1683315620.639809, code 08, type 02, val -1
-# event at 1683315621.797821, code 08, type 02, val -1
-# event at 1683315621.829816, code 08, type 02, val -1
 
 class RecentEvents:
     def __init__(self, events_size=10):
@@ -44,18 +25,60 @@ class RecentEvents:
         return max(set(self._events), key=self._events.count)
 
 
+class RecentEventsLinux(RecentEvents):
+    def __init__(self, events_size=10, logging_interval=10, device='/dev/input/event7'):
+        super().__init__(events_size)
+        self._device = InputDevice(device)
+        self._ui = UInput()
+        self._logging_interval = logging_interval
+        self._next_log_at = datetime.datetime.now() + datetime.timedelta(minutes=logging_interval)
+        self._scroll_up_blocked = 0
+        self._scroll_down_blocked = 0
+        self.Running = True
+        self._handle_mouse_wheel_events()
+
+    def __del__(self):
+        self._ui.close()
+
+    def add(self, x):
+        super().add(x)
+        if x >= 1:
+            self._scroll_up_blocked += 1
+        elif x <= -1:
+            self._scroll_down_blocked += 1
+
+    def _virtual_mouse_wheel_event(self, direction, scroll_amount=1):
+        print(f'Generating virtual mouse wheel event for {direction}')
+
+    def _handle_mouse_wheel_events(self):
+        while self.Running:
+            r, w, x = select([self._device], [], [])
+            for event in self._device.read():
+                if event.type == ecodes.EV_REL and event.code == ecodes.REL_WHEEL:
+                    self.add(event.value)
+                    trend = self.trend()
+                    if self.trend() != event.value:
+                        print(f"Discarding event because {event.value} doesn't match trend {trend}", event)
+                        # Simulate the event on the virtual input device to prevent it from reaching other programs
+                        self._ui.write(event.type, event.code, event.value)
+                        self._ui.syn()
+
+            now = datetime.datetime.now()
+            if now > self._next_log_at:
+                self._next_log_at = now + datetime.timedelta(minutes=self._logging_interval)
+                print(f'{now.strftime("%Y-%m-%d %H:%M:%S")}: '
+                      f'Blocked a total of {self._scroll_up_blocked + self._scroll_down_blocked} mouse wheel up/down '
+                      f'events ({self._scroll_up_blocked}/{self._scroll_down_blocked})')
+                self.Running = False  # remove once production-ready
+
+
 if __name__ == '__main__':
-    events = RecentEvents()
-    while True:
-        r, w, x = select([device], [], [])
-        for event in device.read():
-            if event.type == 2 and event.code == 8:
-                events.add(event.value)
-                trend = events.trend()
-                if events.trend() != event.value:
-                    print(f"Discarding event because {event.value} doesn't match trend {trend}", event)
-                    # Simulate the event on the virtual input device to prevent it from reaching other programs
-                    ui.write(event.type, event.code, event.value)
-                else:
-                    # Permit event to propagate to other programs
-                    continue
+    parser = argparse.ArgumentParser(prog='Broken Mouse Wheel Fixer')
+    parser.add_argument('buffer_size', nargs='?', default=10, type=int)
+    parser.add_argument('logging_interval', nargs='?', default=1, type=int)
+    parser.add_argument('device', nargs='?', default='/dev/input/event7', type=str)
+    args = parser.parse_args()
+
+    events = RecentEventsLinux(events_size=args.buffer_size,
+                               logging_interval=args.logging_interval,
+                               device=args.device)
