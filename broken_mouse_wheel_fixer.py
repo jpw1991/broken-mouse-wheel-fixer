@@ -1,28 +1,9 @@
-from evdev import InputDevice, UInput
+import argparse
+import atexit
+import evdev
+from evdev import InputDevice
 from select import select
 
-device = InputDevice('/dev/input/event7')
-ui = UInput()
-
-
-# scrolling
-# up:   event at 1683315447.814400, code 08, type 02, val 01
-# down: event at 1683315448.778384, code 08, type 02, val -1
-
-# pattern of bad behaviour:
-# event at 1683315597.933651, code 08, type 02, val -1
-# event at 1683315598.751648, code 08, type 02, val -1
-# event at 1683315598.755643, code 08, type 02, val 02
-# event at 1683315598.763645, code 08, type 02, val -1
-# event at 1683315605.023694, code 08, type 02, val -1
-# event at 1683315618.679808, code 08, type 02, val 01
-# event at 1683315619.087800, code 08, type 02, val -1
-# event at 1683315619.455801, code 08, type 02, val -1
-# event at 1683315619.619826, code 08, type 02, val -1
-# event at 1683315619.939804, code 08, type 02, val -1
-# event at 1683315620.639809, code 08, type 02, val -1
-# event at 1683315621.797821, code 08, type 02, val -1
-# event at 1683315621.829816, code 08, type 02, val -1
 
 class RecentEvents:
     def __init__(self, events_size=10):
@@ -35,8 +16,8 @@ class RecentEvents:
         self._events = []
         self._events_size = events_size
 
-    def add(self, x):
-        self._events.append(x)
+    def add(self, new_event):
+        self._events.append(new_event)
         if len(self._events) >= self._events_size:
             del self._events[0]
 
@@ -44,18 +25,40 @@ class RecentEvents:
         return max(set(self._events), key=self._events.count)
 
 
+class App:
+    def __init__(self, events):
+        self._device = None
+        self._fake_device = None
+        self._events = events
+
+        def cleanup():
+            self._fake_device.close()
+            self._device.close()
+
+        atexit.register(cleanup)
+
+    def run(self):
+        self._device = InputDevice('/dev/input/event7')
+        self._fake_device = evdev.UInput.from_device(self._device, name="FakeMouseFromBrokenMouseWheelFixer")
+
+        while True:
+            r, w, x = select([self._device], [], [])
+            for event in self._device.read():
+                if event.type == evdev.ecodes.EV_REL and event.code == evdev.ecodes.ABS_WHEEL:
+                    self._events.add(event.value)
+                    trend = self._events.trend()
+                    if trend != event.value:
+                        # counter-act bad event by doing an opposite event on the fake device
+                        self._fake_device.write(event.type, event.code, trend)
+                        self._fake_device.syn()
+
+
 if __name__ == '__main__':
-    events = RecentEvents()
-    while True:
-        r, w, x = select([device], [], [])
-        for event in device.read():
-            if event.type == 2 and event.code == 8:
-                events.add(event.value)
-                trend = events.trend()
-                if events.trend() != event.value:
-                    print(f"Discarding event because {event.value} doesn't match trend {trend}", event)
-                    # Simulate the event on the virtual input device to prevent it from reaching other programs
-                    ui.write(event.type, event.code, event.value)
-                else:
-                    # Permit event to propagate to other programs
-                    continue
+    parser = argparse.ArgumentParser(prog='Broken Mouse Wheel Fixer')
+    parser.add_argument('buffer_size', nargs='?', default=10, type=int)
+    parser.add_argument('logging_interval', nargs='?', default=1, type=int)
+    parser.add_argument('device', nargs='?', default='/dev/input/event7', type=str)
+    args = parser.parse_args()
+
+    app = App(RecentEvents(events_size=args.buffer_size))
+    app.run()
