@@ -49,7 +49,7 @@ class App:
                     trend = self._events.trend()
                     if trend != event.value:
                         # counter-act bad event by doing an opposite event on the fake device
-                        self._fake_device.write(event.type, event.code, trend)
+                        self._fake_device.write(event.type, event.code, -event.value)
                         self._fake_device.syn()
 
 
