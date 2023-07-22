@@ -2,6 +2,16 @@
 
 Got a broken mousewheel that skips and jumps? This may fix it for you, as it has done so for me.
 
+## Why?
+
+People often ask me: Why don't you just get a new mouse? It's a fair question. I have my reasons:
+
+- I don't want to. I like this awful mouse.
+- You presume a new mouse is going to work. Why would it work any better? They all come from the same place.
+- Unless you're buying a good mouse for big cash, it's probably going to skip and jump after a few months as well.
+- This is easier. It doesn't matter how bad the mouse's scroll wheel becomes, this software will keep it in check.
+- You can feel good about yourself by not contributing to e-waste.
+
 ## General
 
 **Platforms supported:**
