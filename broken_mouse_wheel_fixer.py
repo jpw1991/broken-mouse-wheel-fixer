@@ -1,6 +1,7 @@
 import argparse
 import atexit
 import evdev
+import logging
 from evdev import InputDevice
 from select import select
 
@@ -37,8 +38,16 @@ class App:
 
         atexit.register(cleanup)
 
-    def run(self):
-        self._device = InputDevice('/dev/input/event7')
+    @staticmethod
+    def find_matching_device(device_name):
+        devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+        for device in devices:
+            if device.name == device_name:
+                return device.path
+        return None
+
+    def run(self, device_path):
+        self._device = InputDevice(device_path)
         self._fake_device = evdev.UInput.from_device(self._device, name="FakeMouseFromBrokenMouseWheelFixer")
 
         while True:
@@ -56,9 +65,14 @@ class App:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='Broken Mouse Wheel Fixer')
     parser.add_argument('buffer_size', nargs='?', default=10, type=int)
-    parser.add_argument('logging_interval', nargs='?', default=1, type=int)
-    parser.add_argument('device', nargs='?', default='/dev/input/event7', type=str)
+    parser.add_argument('device', nargs='?', default='2.4G Mouse', type=str)
     args = parser.parse_args()
 
-    app = App(RecentEvents(events_size=args.buffer_size))
-    app.run()
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
+
+    mouse_device_path = App.find_matching_device(args.device)
+    if mouse_device_path is None:
+        logging.error(f'Failed to get device path for {args.device}')
+    else:
+        app = App(RecentEvents(events_size=args.buffer_size))
+        app.run(mouse_device_path)

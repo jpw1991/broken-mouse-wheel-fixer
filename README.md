@@ -25,6 +25,10 @@ For Windows user convenience: See releases for compiled exes made using PyInstal
 
 ### Linux
 
+- Find out what your device name is by using `libinput list-devices` and take the readable name eg. `2.4G Mouse`
+- Make sure you pass this name to the program via its command-line arguments
+- I've found that this is necessary because the path to the device can change between sessions.
+
 ```sh
 # make virtual environment
 mkdir venv
